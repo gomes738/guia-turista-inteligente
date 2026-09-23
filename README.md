@@ -1,107 +1,108 @@
 # 🇧🇷 Guia do Turista Inteligente (Flask + HTTPX + Google Auth + Gemini AI)
 
-Aplicação web desenvolvida com o microframework **Flask** e Python moderno para orquestração de APIs externas com autenticação via **Google Identity Services (OAuth JWT)**, gerando roteiros de viagem com dados meteorológicos, cálculo de percurso rodoviário e guia turístico & culinário com inteligência artificial.
+Aplicação web desenvolvida com **Flask** e Python para integrar APIs externas, autenticação com Google, informações meteorológicas, rotas rodoviárias e geração de guias turísticos com inteligência artificial.
 
 ---
 
-## 🚀 Como Executar o Projeto Localmente
+## 👥 Equipe e divisão da atividade
 
-### 1. Clonar o Repositório e Acessar a Pasta
+A divisão segue os quatro papéis definidos pelo professor. O quarto integrante será identificado quando entrar na equipe. As funções ainda estão **a implementar**.
+
+| Papel | Integrante | Matrícula | Responsabilidades |
+| --- | --- | --- | --- |
+| Aluno 1 — APIs REST e autenticação | Maria Clara Almeida Martins | 2025116TADS0012 | Em `services.py`: validação do token Google OAuth e geocodificação Open-Meteo com identificação da UF. |
+| Aluno 2 — Telemetria e IA | Roger Pierre Reis Silva | 2025116TADS0010 | Em `services.py`: clima Open-Meteo e rotas OSRM. Em `planejamento.py`: guia Gemini e contingência. |
+| Aluno 3 — Backend e sessões | Antonio Carlos Gomes | 2025116TADS0024 | Em `app.py`: rotas Flask, sessões, criação e exclusão de viagens, padrão PRG e controle de requisições duplicadas. |
+| Aluno 4 — JSON e resiliência | A definir | A definir | Em `app.py`: persistência JSON com lock, sanitização, endpoint de viagens em JSON e tratamento dos erros 404/405. |
+
+---
+
+## 🚀 Como executar o projeto localmente
+
+### 1. Clonar o fork
 
 ```bash
-git clone https://github.com/maykolsampaio/guia-turista-inteligente.git
+git clone https://github.com/gomes738/guia-turista-inteligente.git
 cd guia-turista-inteligente
 ```
 
----
+### 2. Criar e ativar o ambiente virtual
 
-## 2. Criar e Ativar o Ambiente Virtual (`.venv`)
+**Linux/macOS:**
 
-=== "Linux / macOS"
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate
-    ```
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-=== "Windows (PowerShell)"
-    ```powershell
-    python -m venv .venv
-    .\.venv\Scripts\Activate.ps1
-    ```
+**Windows (PowerShell):**
 
----
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
 
-### 3. Instalar as Dependências
+### 3. Instalar as dependências
 
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
----
+### 4. Configurar as variáveis de ambiente
 
-### 4. Configurar as Chaves e Variáveis de Ambiente
+**Linux/macOS:**
 
-Configure as variáveis no seu terminal:
+```bash
+export GEMINI_API_KEY="SUA_CHAVE_GEMINI_AQUI"
+export GOOGLE_CLIENT_ID="776335673676-dk7od4ljhh43bio4bppf94i8ou0u9v9i.apps.googleusercontent.com"
+export PORT="8001"
+```
 
-=== "Linux / macOS"
-    ```bash
-    export GEMINI_API_KEY="SUA_CHAVE_GEMINI_AQUI"
-    export GOOGLE_CLIENT_ID="776335673676-dk7od4ljhh43bio4bppf94i8ou0u9v9i.apps.googleusercontent.com"
-    export PORT="8001"
-    ```
+**Windows (PowerShell):**
 
-=== "Windows (PowerShell)"
-    ```powershell
-    $env:GEMINI_API_KEY="SUA_CHAVE_GEMINI_AQUI"
-    $env:GOOGLE_CLIENT_ID="776335673676-dk7od4ljhh43bio4bppf94i8ou0u9v9i.apps.googleusercontent.com"
-    $env:PORT="8001"
-    ```
+```powershell
+$env:GEMINI_API_KEY="SUA_CHAVE_GEMINI_AQUI"
+$env:GOOGLE_CLIENT_ID="776335673676-dk7od4ljhh43bio4bppf94i8ou0u9v9i.apps.googleusercontent.com"
+$env:PORT="8001"
+```
 
-> **Obtenção da Chave Gemini:** Acesse o [Google AI Studio](https://aistudio.google.com/), crie sua chave e defina na variável `GEMINI_API_KEY`.
+A chave Gemini pode ser obtida no [Google AI Studio](https://aistudio.google.com/).
 
----
-
-### 5. Iniciar o Servidor Flask
+### 5. Iniciar o servidor
 
 ```bash
 python app.py
 ```
 
-Acesse a aplicação no navegador em:  
-👉 **`http://localhost:8001`**
+Acesse `http://localhost:8001` no navegador.
 
 ---
 
-## 📂 Estrutura do Projeto
+## 📂 Estrutura do projeto
 
 ```text
-├── app.py                 # [A IMPLEMENTAR] Aplicação Flask (Autenticação Google no Python com Sessão, SSR e Rotas)
-├── config.py              # Constantes, UFs do Brasil, Client ID do Google e variáveis de ambiente
-├── services.py            # [A IMPLEMENTAR] Integrações com APIs externas via HTTPX (Open-Meteo, OSRM e validação de token Google OAuth)
-├── planejamento.py        # [A IMPLEMENTAR] Módulo de IA Gemini para geração de guia turístico e gastronomia
+├── app.py                 # Rotas Flask, sessões e persistência — a implementar
+├── config.py              # Configurações, chaves e catálogo das UFs
+├── services.py            # Integrações com APIs externas — a implementar
+├── planejamento.py        # Guia turístico com Gemini — a implementar
 ├── templates/
-│   └── index.html         # Frontend Server-Side Rendering (Jinja2, Google Login URI, Cards e Accordion)
+│   └── index.html         # Interface Jinja2
 ├── static/
-│   ├── css/style.css      # Estilização responsiva em CSS
-│   ├── js/app.js          # Comportamento de interface (Accordion e bloqueio de cliques)
+│   ├── css/style.css      # Estilos
+│   ├── js/app.js          # Interações da interface
 │   └── data/
-│       ├── estados_brasil.json # Mapeamento oficial das 27 UFs do Brasil
-│       └── viagens.json        # Persistência em JSON dos roteiros dos usuários logados
-├── requirements.txt       # Lista de dependências Python
-└── README.md              # Documentação e instruções de execução
+│       ├── estados_brasil.json
+│       └── viagens.json
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
-## 🧪 Qualidade de Código e Linter
-
-Para validar o código com as ferramentas da disciplina:
+## 🧪 Qualidade de código
 
 ```bash
-# Formatação e checagem de boas práticas (PEP 8)
-ruff check . --fix
-
-# Checagem estática de tipos (Type Hints)
+ruff check .
 mypy app.py services.py planejamento.py config.py
 ```
