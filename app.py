@@ -192,11 +192,15 @@ def criar_viagem():
     pass
 
 
-@app.route("/viagens/deletar/<string:viagem_id>", methods=["GET", "POST"])
+@app.route("/viagens/deletar/<string:viagem_id>", methods=["POST"])
 def deletar_viagem(viagem_id: str):
     """Exclui um roteiro da lista do usuário."""
-    # TODO (Aluno 3): Validar sessão e chamar remover_viagem_usuario
-    pass
+    usuario = session.get("usuario")
+    if not usuario:
+        return redirect(url_for("index"))
+
+    remover_viagem_usuario(usuario["id"], viagem_id)
+    return redirect(url_for("index"))
 
 
 # ==============================================================================
