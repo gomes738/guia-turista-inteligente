@@ -126,11 +126,30 @@ def index():
     )
 
 
-@app.route("/auth/google/callback", methods=["GET", "POST"])
+@app.route("/auth/google/callback", methods=["POST"])
 def google_callback():
     """Recebe a credencial JWT do Google e valida 100% no Python."""
-    # TODO (Aluno 3): Receber token JWT do formulário, validar via services.py e salvar session['usuario']
-    pass
+    token = request.form.get("credential", "").strip()
+    if not token:
+        return redirect(url_for("index"))
+
+    with httpx.Client() as client:
+        usuario_google = verificar_token_google(client, token)
+
+    if usuario_google:
+        usuario_anterior = session.get("usuario")
+        id_anterior = usuario_anterior.get("id", "") if usuario_anterior else ""
+        if id_anterior.startswith("visitante-"):
+            viagens_visitante_memoria.pop(id_anterior, None)
+
+        session["usuario"] = {
+            "id": usuario_google["sub"],
+            "nome": usuario_google["name"],
+            "email": usuario_google["email"],
+            "foto": usuario_google["picture"],
+        }
+
+    return redirect(url_for("index"))
 
 
 @app.route("/auth/demo", methods=["GET"])
