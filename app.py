@@ -114,29 +114,75 @@ def remover_viagem_usuario(user_id: str, viagem_id: str) -> None:
 @app.route("/", methods=["GET"])
 def index():
     """Renderiza a página principal (SSR com Jinja2)."""
-    # TODO (Aluno 3): Recuperar usuário da sessão, buscar viagens e renderizar index.html
-    pass
+    usuario = session.get("usuario")
+    viagens = obter_viagens_usuario(usuario["id"]) if usuario else []
+
+    return render_template(
+        "index.html",
+        usuario=usuario,
+        viagens=viagens,
+        ufs=ESTADOS_BRASIL,
+        client_id=GOOGLE_CLIENT_ID,
+    )
 
 
-@app.route("/auth/google/callback", methods=["GET", "POST"])
+@app.route("/auth/google/callback", methods=["POST"])
 def google_callback():
     """Recebe a credencial JWT do Google e valida 100% no Python."""
-    # TODO (Aluno 3): Receber token JWT do formulário, validar via services.py e salvar session['usuario']
-    pass
+    token = request.form.get("credential", "").strip()
+    if not token:
+        return redirect(url_for("index"))
+
+    with httpx.Client() as client:
+        usuario_google = verificar_token_google(client, token)
+
+    if usuario_google:
+        usuario_anterior = session.get("usuario")
+        id_anterior = usuario_anterior.get("id", "") if usuario_anterior else ""
+        if id_anterior.startswith("visitante-"):
+            viagens_visitante_memoria.pop(id_anterior, None)
+
+        session["usuario"] = {
+            "id": usuario_google["sub"],
+            "nome": usuario_google["name"],
+            "email": usuario_google["email"],
+            "foto": usuario_google["picture"],
+        }
+
+    return redirect(url_for("index"))
 
 
-@app.route("/auth/demo", methods=["GET", "POST"])
+@app.route("/auth/demo", methods=["GET"])
 def login_demo():
     """Modo Visitante para desenvolvimento e testes locais."""
-    # TODO (Aluno 3): Criar sessão volátil em memória para 'Viajante Convidado'
-    pass
+    usuario_atual = session.get("usuario")
+    id_atual = usuario_atual.get("id", "") if usuario_atual else ""
+    if id_atual.startswith("visitante-"):
+        viagens_visitante_memoria.pop(id_atual, None)
+
+    # Contrato com o Aluno 4: IDs com este prefixo identificam visitantes.
+    visitante_id = f"visitante-{uuid.uuid4()}"
+    session["usuario"] = {
+        "id": visitante_id,
+        "nome": "Viajante Convidado",
+        "email": "visitante@guia.local",
+        "foto": "https://ui-avatars.com/api/?name=Viajante+Convidado",
+    }
+    viagens_visitante_memoria[visitante_id] = []
+
+    return redirect(url_for("index"))
 
 
-@app.route("/auth/logout", methods=["GET", "POST"])
+@app.route("/auth/logout", methods=["GET"])
 def logout():
     """Encerra a sessão e descarta a memória de visitante."""
-    # TODO (Aluno 3): Limpar session e descartar viagens temporárias do visitante
-    pass
+    usuario = session.get("usuario")
+    usuario_id = usuario.get("id", "") if usuario else ""
+    if usuario_id.startswith("visitante-"):
+        viagens_visitante_memoria.pop(usuario_id, None)
+
+    session.clear()
+    return redirect(url_for("index"))
 
 
 @app.route("/viagens/criar", methods=["GET", "POST"])
@@ -146,11 +192,15 @@ def criar_viagem():
     pass
 
 
-@app.route("/viagens/deletar/<string:viagem_id>", methods=["GET", "POST"])
+@app.route("/viagens/deletar/<string:viagem_id>", methods=["POST"])
 def deletar_viagem(viagem_id: str):
     """Exclui um roteiro da lista do usuário."""
-    # TODO (Aluno 3): Validar sessão e chamar remover_viagem_usuario
-    pass
+    usuario = session.get("usuario")
+    if not usuario:
+        return redirect(url_for("index"))
+
+    remover_viagem_usuario(usuario["id"], viagem_id)
+    return redirect(url_for("index"))
 
 
 # ==============================================================================
