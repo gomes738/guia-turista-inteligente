@@ -13,7 +13,7 @@ A divisão segue os quatro papéis definidos pelo professor. O quarto integrante
 | Aluno 1 — APIs REST e autenticação | Maria Clara Almeida Martins | 2025116TADS0012 | Em `services.py`: validação do token Google OAuth e geocodificação Open-Meteo com identificação da UF. |
 | Aluno 2 — Telemetria e IA | Roger Pierre Reis Silva | 2025116TADS0010 | Em `services.py`: clima Open-Meteo e rotas OSRM. Em `planejamento.py`: guia Gemini e contingência. |
 | Aluno 3 — Backend e sessões | Antonio Carlos Gomes | 2025116TADS0024 | Em `app.py`: rotas Flask, sessões, criação e exclusão de viagens, padrão PRG e controle de requisições duplicadas. |
-| Aluno 4 — JSON e resiliência | A definir | A definir | Em `app.py`: persistência JSON com lock, sanitização, endpoint de viagens em JSON e tratamento dos erros 404/405. |
+| Aluno 4 — JSON e resiliência | Micael Cardoso Reis| 2025116TADS0041 | Em `app.py`: persistência JSON com lock, sanitização, endpoint de viagens em JSON e tratamento dos erros 404/405. |
 
 ---
 
