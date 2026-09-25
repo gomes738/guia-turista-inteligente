@@ -50,8 +50,37 @@ def buscar_coordenadas(
     Retorna a tupla (latitude, longitude, nome_formatado). Caso a busca falhe,
     aplica fallback seguro retornando (0.0, 0.0, "Cidade - UF").
     """
-    # TODO (Aluno 1): Implementar a consulta à API de Geocodificação Open-Meteo com filtro Brasil
-    pass
+    uf_informada = (uf or "").strip().upper()
+    fallback = (0.0, 0.0, f"{cidade} - {uf_informada}" if uf_informada else cidade)
+    try:
+        resp = client.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={
+                "name": cidade,
+                "count": 10,
+                "language": "pt",
+                "format": "json",
+                "countryCode": "BR",
+            },
+            timeout=4.0,
+        )
+        resp.raise_for_status()
+        resultados = resp.json().get("results") or []
+    except (httpx.HTTPError, ValueError):
+        return fallback
+
+    resultados = [r for r in resultados if r.get("country_code") == "BR"]
+    if not resultados:
+        return fallback
+
+    # Prefere o resultado na UF informada; senão, o mais relevante (1º), corrigindo a UF pelo admin1
+    escolhido = next(
+        (r for r in resultados if obter_sigla_uf(r.get("admin1", "")) == uf_informada),
+        resultados[0],
+    )
+    sigla = obter_sigla_uf(escolhido.get("admin1", ""), uf_informada)
+    nome = f"{escolhido['name']} - {sigla}" if sigla else escolhido["name"]
+    return float(escolhido["latitude"]), float(escolhido["longitude"]), nome
 
 
 # ==============================================================================
