@@ -79,7 +79,9 @@ def buscar_coordenadas(
         resultados[0],
     )
     sigla = obter_sigla_uf(escolhido.get("admin1", ""), uf_informada)
-    nome = f"{escolhido['name']} - {sigla}" if sigla else escolhido["name"]
+    # Remove descrições entre parênteses (ex: "Fernando de Noronha (Distrito Estadual)")
+    nome_cidade = re.sub(r"\s*\([^)]*\)", "", escolhido["name"]).strip()
+    nome = f"{nome_cidade} - {sigla}" if sigla else nome_cidade
     return float(escolhido["latitude"]), float(escolhido["longitude"]), nome
 
 
