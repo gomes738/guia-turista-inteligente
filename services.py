@@ -1,6 +1,7 @@
 # Serviços de integração com APIs externas (Google OAuth, Open-Meteo e OSRM)
 
 import re
+import unicodedata
 from typing import Any
 
 import httpx
@@ -22,14 +23,23 @@ def verificar_token_google(client: httpx.Client, token: str) -> dict[str, Any] |
     pass
 
 
+def _normalizar(texto: str) -> str:
+    """Remove acentos, espaços extras e caixa alta para comparar nomes de estados."""
+    return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode().strip().lower()
+
+
 def obter_sigla_uf(admin1: str, uf_informada: str = "") -> str:
     """Converte o estado retornado pela API (admin1) para a sigla oficial de 2 letras (ex: 'PI').
 
     Caso a API retorne um nome completo (ex: 'Piauí'), normaliza para a sigla 'PI'.
     Caso contrário, utiliza a UF informada como fallback se for válida.
     """
-    # TODO (Aluno 1): Implementar a conversão e normalização da UF
-    pass
+    alvo = _normalizar(admin1 or "")
+    for sigla, nome in ESTADOS_BRASIL.items():
+        if alvo in (_normalizar(nome), sigla.lower()):
+            return sigla
+    uf = (uf_informada or "").strip().upper()
+    return uf if uf in ESTADOS_BRASIL else ""
 
 
 def buscar_coordenadas(
