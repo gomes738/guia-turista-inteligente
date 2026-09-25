@@ -1,7 +1,7 @@
-# Aluno 4 — a definir
+# Aluno 4 — Micael Cardoso Reis
 
-- **Nome:** a definir
-- **Matrícula:** a definir
+- **Nome:** Micael Cardoso Reis
+- **Matrícula:** 2025116TADS0041
 - **Papel:** Aluno 4 — persistência JSON, sanitização e resiliência
 
 ## 1. Seu papel na atividade
