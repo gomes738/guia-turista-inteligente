@@ -1,6 +1,7 @@
 # Serviços de integração com APIs externas (Google OAuth, Open-Meteo e OSRM)
 
 import re
+import unicodedata
 from typing import Any
 
 import httpx
@@ -18,8 +19,38 @@ def verificar_token_google(client: httpx.Client, token: str) -> dict[str, Any] |
     Verifica se o token foi emitido para o GOOGLE_CLIENT_ID configurado no projeto
     e retorna o payload do usuário (sub, name, email, picture) ou None se for inválido.
     """
-    # TODO (Aluno 1): Implementar a validação do token JWT junto à API do Google OAuth2
-    pass
+    if not token:
+        return None
+    try:
+        resp = client.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"id_token": token},
+            timeout=4.0,
+        )
+    except httpx.HTTPError:
+        return None
+    if resp.status_code != 200:
+        return None
+    try:
+        dados = resp.json()
+    except ValueError:
+        return None
+
+    # Recusa tokens válidos emitidos para outro aplicativo
+    if dados.get("aud") != GOOGLE_CLIENT_ID:
+        return None
+
+    return {
+        "sub": dados.get("sub"),
+        "name": dados.get("name", ""),
+        "email": dados.get("email", ""),
+        "picture": dados.get("picture", ""),
+    }
+
+
+def _normalizar(texto: str) -> str:
+    """Remove acentos, espaços extras e caixa alta para comparar nomes de estados."""
+    return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode().strip().lower()
 
 
 def obter_sigla_uf(admin1: str, uf_informada: str = "") -> str:
@@ -28,8 +59,12 @@ def obter_sigla_uf(admin1: str, uf_informada: str = "") -> str:
     Caso a API retorne um nome completo (ex: 'Piauí'), normaliza para a sigla 'PI'.
     Caso contrário, utiliza a UF informada como fallback se for válida.
     """
-    # TODO (Aluno 1): Implementar a conversão e normalização da UF
-    pass
+    alvo = _normalizar(admin1 or "")
+    for sigla, nome in ESTADOS_BRASIL.items():
+        if alvo in (_normalizar(nome), sigla.lower()):
+            return sigla
+    uf = (uf_informada or "").strip().upper()
+    return uf if uf in ESTADOS_BRASIL else ""
 
 
 def buscar_coordenadas(
@@ -40,8 +75,39 @@ def buscar_coordenadas(
     Retorna a tupla (latitude, longitude, nome_formatado). Caso a busca falhe,
     aplica fallback seguro retornando (0.0, 0.0, "Cidade - UF").
     """
-    # TODO (Aluno 1): Implementar a consulta à API de Geocodificação Open-Meteo com filtro Brasil
-    pass
+    uf_informada = (uf or "").strip().upper()
+    fallback = (0.0, 0.0, f"{cidade} - {uf_informada}" if uf_informada else cidade)
+    try:
+        resp = client.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={
+                "name": cidade,
+                "count": 10,
+                "language": "pt",
+                "format": "json",
+                "countryCode": "BR",
+            },
+            timeout=4.0,
+        )
+        resp.raise_for_status()
+        resultados = resp.json().get("results") or []
+    except (httpx.HTTPError, ValueError):
+        return fallback
+
+    resultados = [r for r in resultados if r.get("country_code") == "BR"]
+    if not resultados:
+        return fallback
+
+    # Prefere o resultado na UF informada; senão, o mais relevante (1º), corrigindo a UF pelo admin1
+    escolhido = next(
+        (r for r in resultados if obter_sigla_uf(r.get("admin1", "")) == uf_informada),
+        resultados[0],
+    )
+    sigla = obter_sigla_uf(escolhido.get("admin1", ""), uf_informada)
+    # Remove descrições entre parênteses (ex: "Fernando de Noronha (Distrito Estadual)")
+    nome_cidade = re.sub(r"\s*\([^)]*\)", "", escolhido["name"]).strip()
+    nome = f"{nome_cidade} - {sigla}" if sigla else nome_cidade
+    return float(escolhido["latitude"]), float(escolhido["longitude"]), nome
 
 
 # ==============================================================================
