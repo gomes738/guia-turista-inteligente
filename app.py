@@ -1,4 +1,4 @@
-﻿"""Aplica├º├úo Flask Principal - Guia do Turista Inteligente (API Gateway em Python)."""
+﻿"""Aplicação Flask Principal - Guia do Turista Inteligente (API Gateway em Python)."""
 
 import json
 import os
@@ -31,26 +31,26 @@ from services import (
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "guia-turista-secret-key-2026-python")
 
-# Controle de concorr├¬ncia para leitura e escrita segura no arquivo JSON
+# Controle de concorrência para leitura e escrita segura no arquivo JSON
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 lock_arquivo_json = threading.RLock()
 
-# Armazenamento vol├ítil de roteiros em mem├│ria para sess├Áes de visitantes
+# Armazenamento volátil de roteiros em memória para sessões de visitantes
 viagens_visitante_memoria: dict[str, list[dict[str, Any]]] = {}
 
-# Controle de concorr├¬ncia e idempot├¬ncia contra cliques duplicados
+# Controle de concorrência e idempotência contra cliques duplicados
 requisicoes_ativas: set[str] = set()
 requisicoes_recentes: dict[str, float] = {}
 lock_requisicoes = threading.Lock()
 
 
 # ==============================================================================
-# ­ƒæñ RESPONSABILIDADE DO ALUNO 4: Persist├¬ncia JSON, Sanitiza├º├úo e Manipula├º├úo
+# 👤 RESPONSABILIDADE DO ALUNO 4: Persistência JSON, Sanitização e Manipulação
 # ==============================================================================
 
 
 def sanitizar_entrada(texto: str, max_len: int = 80) -> str:
-    """Higieniza entradas de texto removendo tags HTML, caracteres de controle e espa├ºos extras."""
+    """Higieniza entradas de texto removendo tags HTML, caracteres de controle e espaços extras."""
     valor = str(texto or "")
     valor = re.sub(r"<[^>]*>", "", valor)
     valor = re.sub(r"[\x00-\x1f\x7f]", " ", valor)
@@ -62,7 +62,7 @@ def criar_estrutura_padrao_viagens() -> dict[str, Any]:
     """Retorna a estrutura inicial do payload JSON de viagens com metadados e provedores."""
     return {
         "versao_schema": "1.0",
-        "descricao": "Base consolidada de roteiros tur├¡sticos e telemetria por usu├írio",
+        "descricao": "Base consolidada de roteiros turísticos e telemetria por usuário",
         "atualizado_em": datetime.now().isoformat(),
         "total_usuarios": 0,
         "total_roteiros": 0,
@@ -77,7 +77,7 @@ def criar_estrutura_padrao_viagens() -> dict[str, Any]:
 
 
 def carregar_dados_viagens_json() -> dict[str, Any]:
-    """L├¬ a base completa de viagens de static/data/viagens.json de forma thread-safe com lock_arquivo_json."""
+    """Lê a base completa de viagens de static/data/viagens.json de forma thread-safe com lock_arquivo_json."""
     with lock_arquivo_json:
         try:
             with open(VIAGENS_FILE, "r", encoding="utf-8") as arquivo:
@@ -98,7 +98,7 @@ def carregar_dados_viagens_json() -> dict[str, Any]:
 
 
 def salvar_dados_viagens_json(dados_completos: dict[str, Any]) -> None:
-    """Persiste a base hier├írquica em static/data/viagens.json com lock_arquivo_json e indenta├º├úo de 2 espa├ºos."""
+    """Persiste a base hierárquica em static/data/viagens.json com lock_arquivo_json e indentação de 2 espaços."""
     if not isinstance(dados_completos, dict):
         dados_completos = criar_estrutura_padrao_viagens()
 
@@ -132,7 +132,7 @@ def salvar_dados_viagens_json(dados_completos: dict[str, Any]) -> None:
 
 
 def obter_viagens_usuario(user_id: str) -> list[dict[str, Any]]:
-    """Recupera a lista de roteiros: da mem├│ria para visitantes ou do arquivo JSON para logados."""
+    """Recupera a lista de roteiros: da memória para visitantes ou do arquivo JSON para logados."""
     if user_id.startswith("visitante-"):
         return list(viagens_visitante_memoria.get(user_id, []))
 
@@ -149,7 +149,7 @@ def adicionar_viagem_usuario(
     item: dict[str, Any],
     perfil_usuario: dict[str, Any] | None = None,
 ) -> None:
-    """Adiciona um novo roteiro: na mem├│ria para visitante ou grava no JSON para usu├írio logado."""
+    """Adiciona um novo roteiro: na memória para visitante ou grava no JSON para usuário logado."""
     if user_id.startswith("visitante-"):
         viagens_visitante_memoria.setdefault(user_id, []).append(item)
         return
@@ -174,7 +174,7 @@ def adicionar_viagem_usuario(
 
 
 def remover_viagem_usuario(user_id: str, viagem_id: str) -> None:
-    """Remove um roteiro espec├¡fico pelo ID."""
+    """Remove um roteiro específico pelo ID."""
     if user_id.startswith("visitante-"):
         viagens = viagens_visitante_memoria.get(user_id, [])
         viagens_visitante_memoria[user_id] = [
@@ -198,13 +198,13 @@ def remover_viagem_usuario(user_id: str, viagem_id: str) -> None:
 
 
 # ==============================================================================
-# ­ƒæñ RESPONSABILIDADE DO ALUNO 3: Backend Gateway, Sess├Áes, Rotas & Idempot├¬ncia
+# 👤 RESPONSABILIDADE DO ALUNO 3: Backend Gateway, Sessões, Rotas & Idempotência
 # ==============================================================================
 
 
 @app.route("/", methods=["GET"])
 def index():
-    """Renderiza a p├ígina principal (SSR com Jinja2)."""
+    """Renderiza a página principal (SSR com Jinja2)."""
     usuario = session.get("usuario")
     viagens = obter_viagens_usuario(usuario["id"]) if usuario else []
 
@@ -262,7 +262,7 @@ def login_demo():
 
 @app.route("/auth/logout", methods=["GET"])
 def logout():
-    """Encerra a sess├úo e descarta a mem├│ria de visitante."""
+    """Encerra a sessão e descarta a memória de visitante."""
     usuario = session.get("usuario")
     usuario_id = usuario.get("id", "") if usuario else ""
     if usuario_id.startswith("visitante-"):
@@ -274,7 +274,7 @@ def logout():
 
 @app.route("/viagens/criar", methods=["POST"])
 def criar_viagem():
-    """Processa o formul├írio de cria├º├úo com deduplica├º├úo (locks) e orquestra├º├úo de APIs."""
+    """Processa o formulário de criação com deduplicação (locks) e orquestração de APIs."""
     usuario = session.get("usuario")
     if not isinstance(usuario, dict) or not usuario.get("id"):
         return redirect(url_for("index"))
@@ -358,7 +358,7 @@ def criar_viagem():
 
 @app.route("/viagens/deletar/<string:viagem_id>", methods=["POST"])
 def deletar_viagem(viagem_id: str):
-    """Exclui um roteiro da lista do usu├írio."""
+    """Exclui um roteiro da lista do usuário."""
     usuario = session.get("usuario")
     if isinstance(usuario, dict) and usuario.get("id"):
         remover_viagem_usuario(str(usuario["id"]), sanitizar_entrada(viagem_id, 120))
@@ -366,7 +366,7 @@ def deletar_viagem(viagem_id: str):
 
 
 # ==============================================================================
-# ­ƒæñ RESPONSABILIDADE DO ALUNO 4: Endpoint REST e Error Handlers Globais
+# 👤 RESPONSABILIDADE DO ALUNO 4: Endpoint REST e Error Handlers Globais
 # ==============================================================================
 
 
@@ -374,7 +374,7 @@ def deletar_viagem(viagem_id: str):
 @app.route("/api/viagens/json", methods=["GET"])
 @app.route("/api/viagens", methods=["GET"])
 def ver_viagens_json():
-    """Retorna a base consolidada de static/data/viagens.json com suporte din├ómico a visitantes."""
+    """Retorna a base consolidada de static/data/viagens.json com suporte dinâmico a visitantes."""
     dados = carregar_dados_viagens_json()
     usuario = session.get("usuario") or {}
     user_id = usuario.get("id", "") if isinstance(usuario, dict) else ""
@@ -399,16 +399,16 @@ def ver_viagens_json():
 
 @app.errorhandler(405)
 def metodo_nao_permitido(error):
-    """Fallback para acessos GET em rotas POST (ex: digitar /viagens/criar na barra de endere├ºos)."""
+    """Fallback para acessos GET em rotas POST (ex: digitar /viagens/criar na barra de endereços)."""
     return redirect(url_for("index"))
 
 
 @app.errorhandler(404)
 def pagina_nao_encontrada(error):
-    """Fallback para rotas inexistentes redirecionando suavemente para a p├ígina principal."""
+    """Fallback para rotas inexistentes redirecionando suavemente para a página principal."""
     return redirect(url_for("index"))
 
 
 if __name__ == "__main__":
-    print(f"­ƒîì Servidor Flask Guia do Turista rodando em http://localhost:{PORT}")
+    print(f"🌍 Servidor Flask Guia do Turista rodando em http://localhost:{PORT}")
     app.run(host="0.0.0.0", port=PORT, debug=True)
