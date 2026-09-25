@@ -4,6 +4,7 @@ import json
 import os
 import re
 import threading
+from copy import deepcopy
 import time
 import uuid
 from datetime import datetime
@@ -32,7 +33,7 @@ app.secret_key = os.getenv("SECRET_KEY", "guia-turista-secret-key-2026-python")
 
 # Controle de concorrência para leitura e escrita segura no arquivo JSON
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-lock_arquivo_json = threading.Lock()
+lock_arquivo_json = threading.RLock()
 
 # Armazenamento volátil de roteiros em memória para sessões de visitantes
 viagens_visitante_memoria: dict[str, list[dict[str, Any]]] = {}
@@ -50,8 +51,11 @@ lock_requisicoes = threading.Lock()
 
 def sanitizar_entrada(texto: str, max_len: int = 80) -> str:
     """Higieniza entradas de texto removendo tags HTML, caracteres de controle e espaços extras."""
-    # TODO (Aluno 4): Implementar a sanitização de texto via regex r'<[^>]*>'
-    pass
+    valor = str(texto or "")
+    valor = re.sub(r"<[^>]*>", "", valor)
+    valor = re.sub(r"[\x00-\x1f\x7f]", " ", valor)
+    valor = re.sub(r"\s+", " ", valor).strip()
+    return valor[:max(0, max_len)]
 
 
 def criar_estrutura_padrao_viagens() -> dict[str, Any]:
@@ -74,20 +78,70 @@ def criar_estrutura_padrao_viagens() -> dict[str, Any]:
 
 def carregar_dados_viagens_json() -> dict[str, Any]:
     """Lê a base completa de viagens de static/data/viagens.json de forma thread-safe com lock_arquivo_json."""
-    # TODO (Aluno 4): Implementar leitura segura do JSON com lock_arquivo_json
-    pass
+    with lock_arquivo_json:
+        try:
+            with open(VIAGENS_FILE, "r", encoding="utf-8") as arquivo:
+                dados = json.load(arquivo)
+        except (FileNotFoundError, json.JSONDecodeError, OSError, TypeError):
+            return criar_estrutura_padrao_viagens()
+
+    if not isinstance(dados, dict):
+        return criar_estrutura_padrao_viagens()
+
+    padrao = criar_estrutura_padrao_viagens()
+    for chave, valor in padrao.items():
+        if chave not in dados:
+            dados[chave] = deepcopy(valor)
+    if not isinstance(dados.get("usuarios"), dict):
+        dados["usuarios"] = {}
+    return dados
 
 
 def salvar_dados_viagens_json(dados_completos: dict[str, Any]) -> None:
     """Persiste a base hierárquica em static/data/viagens.json com lock_arquivo_json e indentação de 2 espaços."""
-    # TODO (Aluno 4): Implementar escrita segura no arquivo JSON com lock_arquivo_json
-    pass
+    if not isinstance(dados_completos, dict):
+        dados_completos = criar_estrutura_padrao_viagens()
+
+    with lock_arquivo_json:
+        usuarios = dados_completos.get("usuarios")
+        if not isinstance(usuarios, dict):
+            usuarios = {}
+            dados_completos["usuarios"] = usuarios
+
+        total_roteiros = 0
+        for usuario in usuarios.values():
+            if not isinstance(usuario, dict):
+                continue
+            roteiros = usuario.get("roteiros")
+            if not isinstance(roteiros, list):
+                roteiros = []
+                usuario["roteiros"] = roteiros
+            total_roteiros += len(roteiros)
+            metadados = usuario.get("metadados")
+            if not isinstance(metadados, dict):
+                metadados = {}
+                usuario["metadados"] = metadados
+            metadados["total_roteiros"] = len(roteiros)
+            metadados["atualizado_em"] = datetime.now().isoformat()
+
+        dados_completos["total_usuarios"] = len(usuarios)
+        dados_completos["total_roteiros"] = total_roteiros
+        dados_completos["atualizado_em"] = datetime.now().isoformat()
+        with open(VIAGENS_FILE, "w", encoding="utf-8") as arquivo:
+            json.dump(dados_completos, arquivo, ensure_ascii=False, indent=2)
 
 
 def obter_viagens_usuario(user_id: str) -> list[dict[str, Any]]:
     """Recupera a lista de roteiros: da memória para visitantes ou do arquivo JSON para logados."""
-    # TODO (Aluno 4): Implementar recuperação de roteiros por usuário (memória vs JSON)
-    pass
+    if user_id.startswith("visitante-"):
+        return list(viagens_visitante_memoria.get(user_id, []))
+
+    dados = carregar_dados_viagens_json()
+    usuario = dados.get("usuarios", {}).get(user_id, {})
+    if not isinstance(usuario, dict):
+        return []
+    roteiros = usuario.get("roteiros", [])
+    return list(roteiros) if isinstance(roteiros, list) else []
 
 
 def adicionar_viagem_usuario(
@@ -102,8 +156,26 @@ def adicionar_viagem_usuario(
 
 def remover_viagem_usuario(user_id: str, viagem_id: str) -> None:
     """Remove um roteiro específico pelo ID."""
-    # TODO (Aluno 4): Implementar remoção de roteiro pelo ID
-    pass
+    if user_id.startswith("visitante-"):
+        viagens = viagens_visitante_memoria.get(user_id, [])
+        viagens_visitante_memoria[user_id] = [
+            viagem for viagem in viagens if viagem.get("id") != viagem_id
+        ]
+        return
+
+    with lock_arquivo_json:
+        dados = carregar_dados_viagens_json()
+        usuario = dados.get("usuarios", {}).get(user_id)
+        if not isinstance(usuario, dict):
+            return
+        roteiros = usuario.get("roteiros", [])
+        if not isinstance(roteiros, list):
+            return
+        usuario["roteiros"] = [
+            viagem for viagem in roteiros
+            if not isinstance(viagem, dict) or viagem.get("id") != viagem_id
+        ]
+        salvar_dados_viagens_json(dados)
 
 
 # ==============================================================================
