@@ -121,8 +121,36 @@ def obter_clima(client: httpx.Client, lat: float, lon: float) -> dict[str, str]:
     Caso coordenadas sejam inválidas (0.0, 0.0) ou ocorra timeout (4.0s),
     retorna dicionário de contingência com valores 'N/D'.
     """
-    # TODO (Aluno 2): Implementar a consulta à API Open-Meteo Forecast com timeout e fallback
-    pass
+    if lat == 0.0 and lon == 0.0:
+        return {"temperatura": "N/D", "umidade": "N/D", "vento": "N/D"}
+
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={lat}&longitude={lon}"
+        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m"
+        "&timezone=auto"
+    )
+
+    try:
+        resposta = client.get(url, timeout=4.0)
+        resposta.raise_for_status()
+        dados = resposta.json()
+    except (httpx.HTTPError, ValueError, TypeError):
+        return {"temperatura": "N/D", "umidade": "N/D", "vento": "N/D"}
+
+    atual = dados.get("current") or {}
+    temperatura = atual.get("temperature_2m")
+    umidade = atual.get("relative_humidity_2m")
+    vento = atual.get("wind_speed_10m")
+
+    if temperatura is None or umidade is None or vento is None:
+        return {"temperatura": "N/D", "umidade": "N/D", "vento": "N/D"}
+
+    return {
+        "temperatura": f"{float(temperatura):.1f} °C",
+        "umidade": f"{int(umidade)}%",
+        "vento": f"{float(vento):.1f} km/h",
+    }
 
 
 def obter_percurso(
@@ -133,5 +161,42 @@ def obter_percurso(
     Em caso de trajetos sem estradas (ex: ilhas) ou timeout (6.0s),
     retorna dicionário com fallback descritivo ('Sem rota direta' / 'Considere voos ou barcos').
     """
-    # TODO (Aluno 2): Implementar o cálculo de rota e distância via OSRM com conversão de unidades
-    pass
+    if lat_o == 0.0 and lon_o == 0.0 and lat_d == 0.0 and lon_d == 0.0:
+        return {"distancia": "Sem rota direta", "tempo": "Considere voos ou barcos"}
+
+    url = (
+        "https://router.project-osrm.org/route/v1/driving/"
+        f"{lon_o},{lat_o};{lon_d},{lat_d}?overview=false"
+    )
+
+    try:
+        resposta = client.get(url, timeout=6.0)
+        resposta.raise_for_status()
+        payload = resposta.json()
+    except (httpx.HTTPError, ValueError, TypeError):
+        return {"distancia": "Sem rota direta", "tempo": "Considere voos ou barcos"}
+
+    rotas = payload.get("routes") or []
+    if not rotas:
+        return {"distancia": "Sem rota direta", "tempo": "Considere voos ou barcos"}
+
+    rota = rotas[0]
+    distancia_m = rota.get("distance")
+    duracao_s = rota.get("duration")
+    if distancia_m is None or duracao_s is None:
+        return {"distancia": "Sem rota direta", "tempo": "Considere voos ou barcos"}
+
+    distancia_km = round(float(distancia_m) / 1000, 1)
+    horas = int(float(duracao_s) // 3600)
+    minutos = int((float(duracao_s) % 3600) // 60)
+
+    if horas and minutos:
+        tempo = f"{horas} h {minutos} min"
+    elif horas:
+        tempo = f"{horas} h"
+    elif minutos:
+        tempo = f"{minutos} min"
+    else:
+        tempo = "< 1 min"
+
+    return {"distancia": f"{distancia_km:.1f} km", "tempo": tempo}
