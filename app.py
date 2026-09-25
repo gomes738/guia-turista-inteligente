@@ -285,22 +285,38 @@ def deletar_viagem(viagem_id: str):
 @app.route("/api/viagens", methods=["GET"])
 def ver_viagens_json():
     """Retorna a base consolidada de static/data/viagens.json com suporte dinâmico a visitantes."""
-    # TODO (Aluno 4): Retornar jsonify() da árvore consolidada de viagens
-    pass
+    dados = carregar_dados_viagens_json()
+    usuario = session.get("usuario") or {}
+    user_id = usuario.get("id", "") if isinstance(usuario, dict) else ""
+    if user_id.startswith("visitante-"):
+        dados["usuarios"][user_id] = {
+            "perfil": deepcopy(usuario),
+            "metadados": {
+                "total_roteiros": len(viagens_visitante_memoria.get(user_id, [])),
+                "atualizado_em": datetime.now().isoformat(),
+                "persistencia": "memoria_temporaria",
+            },
+            "roteiros": deepcopy(viagens_visitante_memoria.get(user_id, [])),
+        }
+        dados["total_usuarios"] = len(dados["usuarios"])
+        dados["total_roteiros"] = sum(
+            len(usuario.get("roteiros", []))
+            for usuario in dados["usuarios"].values()
+            if isinstance(usuario, dict) and isinstance(usuario.get("roteiros"), list)
+        )
+    return jsonify(dados)
 
 
 @app.errorhandler(405)
 def metodo_nao_permitido(error):
     """Fallback para acessos GET em rotas POST (ex: digitar /viagens/criar na barra de endereços)."""
-    # TODO (Aluno 4): Interceptar erro 405 e redirecionar suavemente para url_for('index')
-    pass
+    return redirect(url_for("index"))
 
 
 @app.errorhandler(404)
 def pagina_nao_encontrada(error):
     """Fallback para rotas inexistentes redirecionando suavemente para a página principal."""
-    # TODO (Aluno 4): Interceptar erro 404 e redirecionar suavemente para url_for('index')
-    pass
+    return redirect(url_for("index"))
 
 
 if __name__ == "__main__":
